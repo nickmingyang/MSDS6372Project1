@@ -1,0 +1,79 @@
+---
+title: "EDA 6372 Project 1 NN"
+author: "Nicole Norelli"
+date: "1/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Read in data, fix factors, examine NAs
+cars = read.csv('/Users/nicolenorelli/Documents/DS6372/Project1Details_2021/data1.csv')
+cars$Make = as.factor(cars$Make)
+cars$Transmission.Type = as.factor(cars$Transmission.Type)
+cars$Driven_Wheels = as.factor(cars$Driven_Wheels)
+cars$Vehicle.Size = as.factor(cars$Vehicle.Size)
+cars$Vehicle.Style = as.factor(cars$Vehicle.Style)
+cars$Engine.Fuel.Type = as.factor(cars$Engine.Fuel.Type)
+cars$Model = as.factor(cars$Model)
+
+# Need a closer look at Market.Category
+# Might want to split up the multiple categories
+# There are a bunch of NAs in there too as "N/A"
+
+sapply(cars,function(x) sum(is.na(x))) 
+# 6 in Number.of.Doors, 30 in Engine.Cylinders, 69 in Engine.HP
+# most of the cylinder NAs are the Mazda rx-8, which doesn't really have cylinders
+
+summary(cars)
+```
+
+```{r}
+library(tidyverse)
+# A look at MSRP
+cars %>% ggplot(aes(x=MSRP)) + geom_histogram()
+cars %>% ggplot(aes(x=log(MSRP))) + geom_histogram()
+cars %>% filter(MSRP<1000000) %>% ggplot(aes(x=MSRP)) + geom_histogram()
+cars %>% filter(MSRP<1000000) %>% ggplot(aes(x=log(MSRP))) + geom_histogram()
+
+# Summary MSRP stats for most Factors
+t(aggregate(MSRP~Engine.Cylinders, data=cars, summary))
+t(aggregate(MSRP~Engine.Fuel.Type, data=cars, summary))
+t(aggregate(MSRP~Vehicle.Size, data=cars, summary))
+t(aggregate(MSRP~Transmission.Type, data=cars, summary))
+t(aggregate(MSRP~Vehicle.Style, data=cars, summary))
+t(aggregate(MSRP~Driven_Wheels, data=cars, summary))
+```
+
+```{r}
+# Visualizations of MSRP and possible predictor variables
+plot(as.factor(cars$Engine.Cylinders), cars$MSRP, xlab="Cylinders",ylab="MSRP")
+plot(as.factor(cars$Engine.Cylinders), log(cars$MSRP), xlab="Cylinders",ylab="logMSRP")
+p1 = cars %>% ggplot(aes(x=Engine.Fuel.Type,y=MSRP)) + geom_boxplot()
+p1 + theme(axis.text.x = element_text(angle=45, hjust=1))
+cars %>% ggplot(aes(x=Transmission.Type,y=MSRP)) + geom_boxplot()
+cars %>% ggplot(aes(x=Driven_Wheels,y=MSRP)) + geom_boxplot()
+cars %>% ggplot(aes(x=Vehicle.Size,y=MSRP)) + geom_boxplot()
+p = cars %>% ggplot(aes(x=Vehicle.Style,y=MSRP)) + geom_boxplot()
+p + theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+```{r}
+# MSRP correlations with numeric predictors
+library(GGally)
+cars %>% select(MSRP, Year, Popularity) %>% ggpairs()
+cars %>% select(MSRP, Engine.HP, Engine.Cylinders, highway.MPG, city.mpg) %>% ggpairs()
+cars %>% select(MSRP, Year, Popularity) %>% ggpairs()
+cars %>% filter (!is.na(Engine.HP)) %>% select(MSRP, Engine.HP, Engine.Cylinders, highway.MPG, city.mpg) %>% ggpairs()
+# temporarily removed NAs for convenience in this graph
+
+# Multicollinearity examination
+pairs(cars[,c(3,5,6,9,13,14,15,16)])
+```
+
+```{r}
+
+```
