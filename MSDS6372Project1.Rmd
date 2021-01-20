@@ -21,8 +21,10 @@ library(tidyverse)
 setwd("/Users/mingyang/Desktop/SMU/Applied Statistics/MSDS6372Project1")
 # Read in data under variable CarData
 CarData = read.csv("data1.csv")
-# In case there are NA character values
-CarData[CarData=='NA'] <- NA
+# Fixing three empty values in CarData$Engine.Fuel.Type, after research they are regular unleaded
+CarData$Engine.Fuel.Type = ifelse(CarData$Engine.Fuel.Type=="","regular unleaded",CarData$Engine.Fuel.Type)
+# Fixing Mazda RX model Engine Cylinders to 0
+CarData$Engine.Cylinders = ifelse(CarData$Make=="Mazda"&is.na(CarData$Engine.Cylinders),0,CarData$Engine.Cylinders)
 # Check the reading - can later be deleted
 head(CarData)
 str(CarData)
@@ -32,7 +34,7 @@ variables.to.factor = c("Make","Model","Engine.Fuel.Type","Transmission.Type","D
 CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
 # Look at summary of data
 summary(CarData)
-summary(CarData$Engine.Fuel.Type)
+summary(CarData$Market.Category)
 
 missingData = CarData[rowSums(is.na(CarData)) > 0,]
 missingData
