@@ -32,6 +32,23 @@ summary(cars)
 ```
 
 ```{r}
+# A closer look at some of the missing values
+cars %>% filter(is.na(Number.of.Doors))
+# Ferrari FF 2013 -  research indicates this has 2 doors
+# Tesla Model S 2016 -  research indicates this has 4 doors
+cars %>% filter(Engine.Fuel.Type=='')
+# Suzuki Verona 2004 - research indicates "regular unleaded"
+cars %>% filter(is.na(Engine.Cylinders))
+# all Mazda RX-8/7 or electric.  Mazda RX-8 & 7 don't have cylinders
+cars %>% filter(Engine.Cylinders==0) # all electric
+cars %>% filter(Engine.Fuel.Type=="electric")
+# there's 66 electric engines.  they all list either 0 or NA for cylinder.  Safe to put 0 I think
+cars %>% filter(is.na(Engine.HP))
+# a wider variety.  impute/remove?
+```
+
+
+```{r}
 library(tidyverse)
 # A look at MSRP
 cars %>% ggplot(aes(x=MSRP)) + geom_histogram()
