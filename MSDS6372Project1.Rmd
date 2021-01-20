@@ -1,0 +1,47 @@
+---
+title: "MSDS6372Project1"
+author: "Nicole Norelli, Alex Gilbert & Mingyang Nick YU"
+date: "1/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Automible MSRP Analysis and Prediction
+
+#### Objecive 1
+We are trying to analyse the importance of the "Popularity" variable. While the details of this variable is vague, it was created from social media, and the "higher ups" are curious how much general popularity can play a role in the retail price of a vehicle.
+
+**Data Import and Cleaning...**
+```{r dataINC}
+library(tidyverse)
+# You need to adjust the work environment to run this code
+setwd("/Users/mingyang/Desktop/SMU/Applied Statistics/MSDS6372Project1")
+# Read in data under variable CarData
+CarData = read.csv("data1.csv")
+# In case there are NA character values
+CarData[CarData=='NA'] <- NA
+# Check the reading - can later be deleted
+head(CarData)
+str(CarData)
+dim(CarData)
+# Convert factor variables
+variables.to.factor = c("Make","Model","Engine.Fuel.Type","Transmission.Type","Driven_Wheels","Market.Category","Vehicle.Size","Vehicle.Style")
+CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
+# Look at summary of data
+summary(CarData)
+summary(CarData$Engine.Fuel.Type)
+
+missingData = CarData[rowSums(is.na(CarData)) > 0,]
+missingData
+dim(missingData)
+```
+
+
+
+
+
+
+
