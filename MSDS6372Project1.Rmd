@@ -31,12 +31,38 @@ CarData$Number.of.Doors = ifelse(CarData$Make=="Tesla"&is.na(CarData$Number.of.D
 #CarData$Number.of.Doors = ifelse(CarData$Make=="Tesla"&is.na(CarData$Number.of.Doors),4,CarData$Number.of.Doors)
 # Fixing Ferrari FF 2013 Number.of.Doors to 2 -- Google research
 CarData$Number.of.Doors = ifelse(CarData$Make=="Ferrari"&is.na(CarData$Number.of.Doors),2,CarData$Number.of.Doors)
+
+#Market.Category: Crossover,Diesel,Exotic,Luxury,High-Performance,Factory Tuner,Performance,Flex Fuel,Hatchback,Hybrid,N/A
+marketCat = c("Crossover","Diesel","Exotic","Luxury","High-Performance","Factory Tuner","Performance","Flex Fuel","Hatchback","Hybrid","N/A")
+marketCat = data.frame(marketCat)
+str = "Hatchback,Factory Tuner,High-Performance,N/A";
+grepl(marketCat[11,1],str)
+
+# Add each Market Category as column
+CarData['Crossover'] <- NA
+CarData['Diesel'] <- NA
+CarData['Exotic'] <- NA
+CarData['Luxury'] <- NA
+CarData['High-Performance'] <- NA
+CarData['Factory Tuner'] <- NA
+CarData['Performance'] <- NA
+CarData['Flex Fuel'] <- NA
+CarData['Hatchback'] <- NA
+CarData['Hybrid'] <- NA
+CarData['N/A'] <- NA
+
+str(CarData)
+# Use For loop to fill in Yes/No to each Market Category column
+for(j in 1:dim(marketCat)[1]){
+  CarData[marketCat[j,1]] = ifelse(grepl(marketCat[j,1],CarData$Market.Category),"Yes","No")
+}
+
 # Check the reading - can later be deleted
 head(CarData)
 str(CarData)
 dim(CarData)
 # Convert factor variables
-variables.to.factor = c("Make","Model","Engine.Fuel.Type","Transmission.Type","Driven_Wheels","Market.Category","Vehicle.Size","Vehicle.Style")
+variables.to.factor = c("Make","Model","Engine.Fuel.Type","Transmission.Type","Driven_Wheels","Market.Category","Vehicle.Size","Vehicle.Style","Crossover","Diesel","Exotic","Luxury","High-Performance","Factory Tuner","Performance","Flex Fuel","Hatchback","Hybrid","N/A")
 CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
 # Look at summary of data
 summary(CarData)
@@ -46,7 +72,17 @@ missingData = CarData[rowSums(is.na(CarData)) > 0,]
 missingData
 dim(missingData)
 
-CarData %>% filter(Make=="Tesla")
+#Looking at Tesla
+#CarData %>% filter(Make=="Tesla")
+
+# Looking at what to do with Market.Category variable
+marketCat = CarData %>% select(MSRP,Market.Category)
+dim(marketCat)
+head(marketCat,100)
+
+
+
+
 ```
 
 
