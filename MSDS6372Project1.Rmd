@@ -35,8 +35,6 @@ CarData$Number.of.Doors = ifelse(CarData$Make=="Ferrari"&is.na(CarData$Number.of
 #Market.Category: Crossover,Diesel,Exotic,Luxury,High-Performance,Factory Tuner,Performance,Flex Fuel,Hatchback,Hybrid,N/A (Note: Performance column will be handled individually becuase of presence of High-Performance)
 marketCat = c("Crossover","Diesel","Exotic","Luxury","High-Performance","Factory Tuner","Flex Fuel","Hatchback","Hybrid","N/A")
 marketCat = data.frame(marketCat)
-str = "Hatchback,Factory Tuner,High-Performance,N/A";
-grepl(marketCat[11,1],str)
 
 # Add each Market Category as column
 CarData['Crossover'] <- NA
@@ -60,16 +58,34 @@ for(j in 1:dim(marketCat)[1]){
 CarData$Performance = ifelse(grepl("Performance",CarData$Market.Category)&(!grepl("High-Performance",CarData$Market.Category)),"Yes","No")
 
 CarData %>% select(Market.Category,Performance,'High-Performance','Flex Fuel')
-# Check the reading - can later be deleted
-head(CarData)
-str(CarData)
-dim(CarData)
+
 # Convert factor variables
 variables.to.factor = c("Make","Model","Engine.Fuel.Type","Transmission.Type","Driven_Wheels","Market.Category","Vehicle.Size","Vehicle.Style","Crossover","Diesel","Exotic","Luxury","High-Performance","Factory Tuner","Performance","Flex Fuel","Hatchback","Hybrid","N/A")
 CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
+
+# Adjust column names - get ride of - and space in the column names to make analysis easier
+# Also make column names more uniform
+CarData = CarData %>%
+  rename(
+    EngineFuelType = Engine.Fuel.Type,
+    EngineHP = Engine.HP,
+    EngineCylinders = Engine.Cylinders,
+    TransmissionType = Transmission.Type,
+    DrivenWheels = Driven_Wheels,
+    NumberOfDoors = Number.of.Doors,
+    MarketCategory = Market.Category,
+    VehicleSize = Vehicle.Size,
+    VehicleStyle = Vehicle.Style,
+    HighwayMPG = highway.MPG,
+    CityMPG = city.mpg,
+    HighPerformance = `High-Performance`,
+    FactoryTuner = `Factory Tuner`,
+    FlexFuel = `Flex Fuel`,
+    N_A = `N/A`
+  )
+
 # Look at summary of data
 summary(CarData)
-summary(CarData$Market.Category)
 
 missingData = CarData[rowSums(is.na(CarData)) > 0,]
 missingData
