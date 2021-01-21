@@ -91,13 +91,7 @@ missingData = CarData[rowSums(is.na(CarData)) > 0,]
 missingData
 dim(missingData)
 
-#Looking at Tesla
-#CarData %>% filter(Make=="Tesla")
 
-# Looking at what to do with Market.Category variable
-marketCat = CarData %>% select(MSRP,Market.Category)
-dim(marketCat)
-head(marketCat,100)
 
 
 
