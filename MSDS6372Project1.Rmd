@@ -11,9 +11,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Automible MSRP Analysis and Prediction
 
-#### Objecive 1
-We are trying to analyse the importance of the "Popularity" variable. While the details of this variable is vague, it was created from social media, and the "higher ups" are curious how much general popularity can play a role in the retail price of a vehicle.
-
 **Data Import and Cleaning...**
 ```{r dataINC}
 library(tidyverse)
@@ -112,9 +109,222 @@ summary(CarData$VehicleStyle)
 # dim(missingData)
 write.csv(CarData,"CleanedCarData.csv",row.names = FALSE)
 
+```
 
+#### Objecive 1
+We are trying to analyse the importance of the "Popularity" variable. While the details of this variable is vague, it was created from social media, and the "higher ups" are curious how much general popularity can play a role in the retail price of a vehicle.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+# You need to adjust the work environment to run this code
+setwd("/Users/mingyang/Desktop/SMU/Applied Statistics/MSDS6372Project1")
+# Directly import cleaned dataset and start from here
+CarData = read.csv("CleanedCarData.csv")
+# Convert factor variables
+variables.to.factor = c("Make","Model","EngineFuelType","TransmissionType","DrivenWheels","MarketCategory","VehicleSize","VehicleStyle","Crossover","Diesel","Exotic","Luxury","HighPerformance","FactoryTuner","Performance","FlexFuel","Hatchback","Hybrid","N_A")
+CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
+summary(CarData)
+# Plot agsint numeric variables
+CarData %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity) %>% ggpairs()
+# Try Log transformation on MSRP
+CarData$LogMSRP = log(CarData$MSRP)
+# Recheck the logMSRP against numeric variables
+# LogMSRP seem to have improved linear relationship between Year and EngineHP correlations
+CarData %>% select(LogMSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity) %>% ggpairs()
+# Look at Popularity
+boxplot(CarData$Popularity)
+CarData %>% select(LogMSRP,Popularity)%>% ggpairs()
+#Try LogPopularity
+CarData$LogPopularity = log(CarData$Popularity)
+CarData %>% select(LogMSRP,LogPopularity)%>% ggpairs()
+# Look at original MSRP vs Popularity
+CarData %>% select(MSRP,Popularity)%>% ggpairs()
+#LogMSRP and LogPopularity seem to have improved the linearity relationship between the two
+# Look at histogram of LogMSRP
+CarData %>% ggplot(aes(x=LogMSRP))+geom_histogram(bins=100)
+# Drop MSRP and Popularity from the original Dataset
+CarData<-CarData[,-c(15,16)]
+# Drop MarketCategory - 72 levels are not useful for prediction
+CarData <-CarData[,-10]
+str(CarData)
+#Split data into 80% Train 10% Test 10% Validation set
+set.seed(111)
+train.test.index<-sample(1:dim(CarData)[1],10723,replace=F)
+train.test = CarData[train.test.index,]
+validate = CarData[-train.test.index,]
+set.seed(112)
+train.index = sample(1:dim(train.test)[1],9531,replace=F)
+train = train.test[train.index,]
+test = train.test[-train.index,]
+
+# Use Forward variable selection method to select possible variables as predictors
+library(leaps)
+reg.fwd=regsubsets(LogMSRP~.,data=train,method="forward",nvmax=955)
+par(mfrow=c(1,3))
+bics<-summary(reg.fwd)$bic
+plot(1:956,bics,type="l",ylab="BIC",xlab="# of predictors")
+index<-which(bics==min(bics))
+points(index,bics[index],col="red",pch=10)
+
+adjr2<-summary(reg.fwd)$adjr2
+plot(1:956,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
+index<-which(adjr2==max(adjr2))
+points(index,adjr2[index],col="red",pch=10)
+
+rss<-summary(reg.fwd)$rss
+plot(1:956,rss,type="l",ylab="train RSS",xlab="# of predictors")
+index<-which(rss==min(rss))
+points(index,rss[index],col="red",pch=10)
+
+coef(reg.fwd,676)
+# By using Forward method, 676 predictors seem to generate the smallest BIC number
+# This model has selected predictors below:
+# Make+Model+EngineFuelType+TransmissionType+VehicleSize+VehicleStyle+HighwayMPG+CityMPG+Luxury+FactoryTuner+Performance+FlexFuel+Hybrid+N_A+Exotic+Hatchback+LogPopularity
+forward.regression = lm(LogMSRP~Make+Model+EngineFuelType+TransmissionType+VehicleSize+VehicleStyle+HighwayMPG+CityMPG+Luxury+FactoryTuner+Performance+FlexFuel+Hybrid+N_A+Exotic+Hatchback+LogPopularity,data=train)
+summary(forward.regression)
+par(mfrow=c(2,2))
+plot(forward.regression)
+library(olsrr)
+ols_plot_cooksd_bar(forward.regression)
+ols_plot_resid_stand(forward.regression)
+# After observing the Cook's D, there is observation 4659, 9435 has extremely large Cook's D
+# Observation 1523 also has large Cook's D
+train[4659,] # Toyota Yaris iA
+exp(train[4659,25]) 
+train%>% filter(Make=="Toyota") %>% select(Make,Model,Year,LogMSRP)
+# Can't really make sense to eliminate observation 4659
+
+train[9435,] # Ferrari Superamerica 2005
+exp(train[9435,25]) # Exotic Car
+
+#Look at other Exotic Cars
+train%>%filter(Exotic=="Yes")%>% select(Make,Model,Year,LogMSRP,LogPopularity)
+# Don't really make sense to delete observation 4659 either
+
+# Since there are so many categorical variables, and log transformation improvement on Year and EngineHP didn't make it to the final model
+# Next section we will try reimport the dataset without transformation
+```
+
+#### Objective 1 continue without Log transformation - since there are so many categorical variables
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+# You need to adjust the work environment to run this code
+setwd("/Users/mingyang/Desktop/SMU/Applied Statistics/MSDS6372Project1")
+# Directly import cleaned dataset and start from here
+CarData = read.csv("CleanedCarData.csv")
+# Convert factor variables
+variables.to.factor = c("Make","Model","EngineFuelType","TransmissionType","DrivenWheels","MarketCategory","VehicleSize","VehicleStyle","Crossover","Diesel","Exotic","Luxury","HighPerformance","FactoryTuner","Performance","FlexFuel","Hatchback","Hybrid","N_A")
+CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
+summary(CarData)
+# Plot agsint numeric variables
+CarData %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity) %>% ggpairs()
+CarData = CarData[,-10] #delete MarketCategory
+# Try different way of sampling by Models
+
+
+#Without transformation, split dataset
+set.seed(111)
+train.test.index<-sample(1:dim(CarData)[1],10723,replace=F)
+train.test = CarData[train.test.index,]
+validate = CarData[-train.test.index,]
+set.seed(112)
+train.index = sample(1:dim(train.test)[1],9531,replace=F)
+train = train.test[train.index,]
+test = train.test[-train.index,]
+
+str(train)
+
+# Use Forward variable selection method to select possible variables as predictors
+library(leaps)
+reg.fwd=regsubsets(MSRP~.,data=train,method="forward",nvmax=955)
+par(mfrow=c(1,3))
+bics<-summary(reg.fwd)$bic
+plot(1:956,bics,type="l",ylab="BIC",xlab="# of predictors")
+index<-which(bics==min(bics))
+points(index,bics[index],col="red",pch=10)
+
+adjr2<-summary(reg.fwd)$adjr2
+plot(1:956,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
+index<-which(adjr2==max(adjr2))
+points(index,adjr2[index],col="red",pch=10)
+
+rss<-summary(reg.fwd)$rss
+plot(1:956,rss,type="l",ylab="train RSS",xlab="# of predictors")
+index<-which(rss==min(rss))
+points(index,rss[index],col="red",pch=10)
+
+# how many predictors gives the best BIC?
+which(bics==min(bics))
+coef(reg.fwd,345)
+# By looking at this model, it has selected following predictors:
+# Make+Model+EngineFuelType+EngineCylinders+DrivenWheels+VehicleStyle+HighwayMPG+CityMPG+FactoryTuner+Performance+Hybrid+N_A+Exotic+Hatchback
+forward.regression = lm(MSRP~Make+Model+EngineFuelType+EngineCylinders+DrivenWheels+VehicleStyle+HighwayMPG+CityMPG+FactoryTuner+Performance+Hybrid+N_A+Exotic+Hatchback,data=train)
+summary(forward.regression)
+# This model has higher adjusted R-squared compared to the Log transformed model
+par(mfrow=c(2,2))
+plot(forward.regression)
+library(olsrr)
+ols_plot_cooksd_bar(forward.regression)
+ols_plot_resid_stand(forward.regression)
+# Cook's D plot looks okay - Much better than Log Transformed Plot
+#Observation 577, 230 and 7329 seem to have problem on the residual plot
+train[577,]
+train[230,]
+train[7329,]
+
+########################################
+# Try Backward elimination model.#######
+########################################
+reg.bwd=regsubsets(MSRP~.,data=train,method="backward",nvmax=955)
+par(mfrow=c(1,3))
+bics<-summary(reg.bwd)$bic
+plot(1:956,bics,type="l",ylab="BIC",xlab="# of predictors")
+index<-which(bics==min(bics))
+points(index,bics[index],col="red",pch=10)
+
+adjr2<-summary(reg.bwd)$adjr2
+plot(1:956,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
+index<-which(adjr2==max(adjr2))
+points(index,adjr2[index],col="red",pch=10)
+
+rss<-summary(reg.bwd)$rss
+plot(1:956,rss,type="l",ylab="train RSS",xlab="# of predictors")
+index<-which(rss==min(rss))
+points(index,rss[index],col="red",pch=10)
+
+# how many predictors gives the best BIC?
+which(bics==min(bics))
+coef(reg.bwd,307)
+# Predictor for backward elimination method based on lowest BIC value
+# Make+Model+EngineFuelType+EngineCylinders+DrivenWheels+VehicleStyle+HighwayMPG+Performance+Exotic+Hatchback
+backward.regression = lm(MSRP~Make+Model+EngineFuelType+EngineCylinders+DrivenWheels+VehicleStyle+HighwayMPG+Performance+Exotic+Hatchback,data=train)
+summary(backward.regression)
+# Forward select has higher adjusted R-squared compared to backward method
+par(mfrow=c(2,2))
+plot(backward.regression)
+
+ols_plot_cooksd_bar(backward.regression)
+ols_plot_resid_stand(backward.regression)
+#Observation 577, 230 and 7329 seem to have problem on the residual plot - Same as forward selection
+
+############################################
+# Compare Forward vs. Backward on Test set #
+############################################
+# Test result
+test.result = test$MSRP
+str(test)
+test = test[,-15] #delete MSRP for prediction
+#Forward
+forwardPred = predict(forward.regression,test)
 
 ```
+
+
 
 
 
