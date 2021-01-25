@@ -100,9 +100,14 @@ CarData = CarData %>%
     FlexFuel = `Flex Fuel`,
     N_A = `N/A`
   )
+# Look at HighwayMPG outlier identified by Nicole
+CarData %>% filter(HighwayMPG==354)
+# Change observation HighwayMPG 354 to 34
+CarData$HighwayMPG = ifelse(CarData$HighwayMPG==354,34,CarData$HighwayMPG)
 
 # Look at summary of data
 summary(CarData$VehicleStyle)
+str(CarData)
 # Look at missing Data if any
 # missingData = CarData[rowSums(is.na(CarData)) > 0,]
 # missingData
