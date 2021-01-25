@@ -226,19 +226,31 @@ CarData %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,C
 CarData = CarData[,-10] #delete MarketCategory
 # Try different way of sampling by Models
 
+######### Try Something else to split data ############
+# First 842 are Models that only have 5 observations or less
+ModelList = CarData%>% group_by(Model) %>% mutate(ModelCount = n()) %>% arrange(ModelCount)
+#arrange(ModelList,desc(count))%>%print(n = Inf)
+# Can only split train/test/validate set on Models that has 6 observations or more
+ModelList = ModelList[,-27]
+Not.Able.To.Split = ModelList[(1:842),]
+Able.To.Split = ModelList[-(1:842),]
 
-#Without transformation, split dataset
+# Split Train, test, validate based on able to Train Data...
 set.seed(111)
-train.test.index<-sample(1:dim(CarData)[1],10723,replace=F)
-train.test = CarData[train.test.index,]
-validate = CarData[-train.test.index,]
+validate.set.index<-sample(1:dim(Able.To.Split)[1],1191,replace=F)
+validate = Able.To.Split[validate.set.index,]
+remains1 = Able.To.Split[-validate.set.index,]
 set.seed(112)
-train.index = sample(1:dim(train.test)[1],9531,replace=F)
-train = train.test[train.index,]
-test = train.test[-train.index,]
+test.index = sample(1:dim(remains1)[1],1191,replace=F)
+test = remains1[test.index,]
+train = remains1[-test.index,]
+
+# Joining train set with dataset that been left out
+train = bind_rows(train,Not.Able.To.Split)
+dim(train)
 
 str(train)
-
+str(CarData)
 # Use Forward variable selection method to select possible variables as predictors
 library(leaps)
 reg.fwd=regsubsets(MSRP~.,data=train,method="forward",nvmax=955)
