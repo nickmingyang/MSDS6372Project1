@@ -341,13 +341,16 @@ library(glmnet)
 #Dummy code categorical predictor variables
 x <- model.matrix(MSRP~.,train)[,-1]
 y <- train$MSRP
+set.seed(123) # Need a seed number to keep same results for LASSO
 cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
 par(mfrow=c(1,1))
 plot(cv.out)
 # Look at the coefficient for best lambda
-# coef(cv.out, cv.out$lambda.min)
+coefficients = coef(cv.out, cv.out$lambda.min)
+head(coefficients)
 # Compute the final lasso model
 lasso.model = glmnet(x,y,alpha = 1,lambda = cv.out$lambda.min)
+# Check assumptions
 
 #Dummy code test set to see performance compare to other methods
 xtest<-model.matrix(MSRP~.,test)[,-1]
