@@ -348,6 +348,9 @@ cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
 par(mfrow=c(1,1))
 plot(cv.out)
 # Look at the coefficient for best lambda
+# Make+Model+Year+EngineFuelType+EngineHP+EngineCylinders+TransmissionType+DrivenWheels+NumberOfDoors+VehicleSize+VehicleStyle+HighwayMPG+CityMPG+Popularity+Crossover+Diesel+Exotic+Luxury+HighPerformance+FactoryTurner+Performance+FlexFuel+Hatchback+Hybrid+Yes+N_A
+# Lasso turned off some predictors in Make, Model,VehicleStyle... In order to check assumptions, we need to use lm model with all the predictors
+# Although this won't imitate the Lasso model perfectly though.
 coefficients = coef(cv.out, cv.out$lambda.min)
 head(coefficients)
 # Compute the final lasso model
