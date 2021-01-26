@@ -1,0 +1,224 @@
+
+data car;
+set car;
+logMSRP=log(MSRP);
+run;
+data car;
+set car;
+logHighwayMPG=log(HighwayMPG);
+run;
+data car;
+set car;
+Year3 = Year*Year*Year;
+run;
+data carRestrict;
+set car;
+if MSRP>1000000 then delete;
+run;
+/* msrp and numeric */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model MSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors Popularity;
+run;
+/* msrp and numeric restricted range */
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model MSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors Popularity;
+run;
+/*log msrp and numeric */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model logMSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors Popularity;
+run;
+/*log msrp and numeric restricted range */
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model logMSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors Popularity;
+run;
+/* try log hwympg.  not useful */
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model logMSRP= Year EngineHP EngineCylinders logHighwayMPG CityMPG NumberOfDoors Popularity;
+run;
+/* a look at all the predictors and logMSRP*/
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model logMSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors
+ Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle Popularity;
+output out=t cookd=cookd;
+run;
+/* Just the categorical variables and logMSRP to take a look at residuals */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model logMSRP= Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+run;
+/* categorical variables and MSRP to look at residuals */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model MSRP= Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+run;
+/* restricted range and MSRP vs categorical*/
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model MSRP= Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+run;
+/* restricted range logMSRP and all predictors */
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model logMSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors
+ Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle Popularity;
+run;
+/* restricted range MSRP and all predictors */
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model MSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors
+ Make Model Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle Popularity;
+run;
+/* logMSRP and numeric predictors plus make */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make;
+model logMSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors Popularity
+ Make;
+run;
+/* log MSRP with just Year, Make, and Model */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model;
+model logMSRP= Year
+ Make Model;
+run;
+/* Same but with cookd */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model;
+model MSRP= Year
+ Make Model;
+ output out=t1 cookd=cookd;
+run;
+/* log MSRP with Year and make - still too many levels */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make;
+model logMSRP= Year
+ Make/solution;
+run;
+/* start w/ logMSRP = Year EngineHP.  Add luxury to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury;
+model logMSRP= Year EngineHP Luxury;
+run;
+/* I think it is.  Probably explains some things Make would explain */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model logMSRP= Year EngineHP;
+run;
+/* start w/ logMSRP = Year EngineHP.  Add HighwayMPG to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model logMSRP= Year EngineHP HighwayMPG;
+run;
+/* might not be worth it in simple model */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury;
+model logMSRP= Year EngineHP Luxury;
+run;
+/* start w/ logMSRP = Year EngineHP Luxury.  Add VehicleSize to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury VehicleSize;
+model logMSRP= Year EngineHP Luxury VehicleSize;
+run;
+/* Sig but not as good as I thought it would be*/
+/* start w/ logMSRP = Year EngineHP Luxury.  Add Hybrid to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Hybrid;
+model logMSRP= Year EngineHP Luxury Hybrid;
+run;
+/*meh, not great */
+/* start w/ logMSRP = Year EngineHP Luxury.  Add HighPerformance to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury HighPerformance;
+model logMSRP= Year EngineHP Luxury HighPerformance;
+run;
+/* not impressive */
+/* start w/ logMSRP = Year EngineHP Luxury.  Add VehicleStyle to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury VehicleStyle;
+model logMSRP= Year EngineHP Luxury VehicleStyle;
+run;
+/* Not worth the levels */
+/* start w/ logMSRP = Year EngineHP Luxury.  Add Exotic to see if it's worthwhile */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic;
+model logMSRP= Year EngineHP Luxury Exotic;
+run;
+/* Definitely need this in the model */
+
+/* don't remember why I did this */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle;
+model logMSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors
+ Crossover Diesel DrivenWheels EngineFuelType Exotic FactoryTuner FlexFuel Hatchback
+HighPerformance Hybrid Luxury Make N_A Performance TransmissionType VehicleSize VehicleStyle Popularity;
+run;
+/* try adding hybrid */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic Hybrid;
+model logMSRP= Year EngineHP Luxury Exotic Hybrid;
+run;
+/* meh */
+/* I read this is like the inverse of the VIFs.  If <.1 then problem. */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic;
+model logMSRP= Year EngineHP Luxury Exotic EngineCylinders/tolerance;
+run;
+/* Try simple model and add popularity */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic;
+model logMSRP= Year EngineHP Luxury Exotic EngineCylinders Popularity;
+run;
+/* for the next couple plots I was looking at the residuals of logMSRP and MSRP with more*/
+/* complex models and restricted range.  More for model 2 than simple model */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+model logMSRP= Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+run;
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+model MSRP= Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+run;
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+model logMSRP= Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+run;
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+model MSRP= Make Model EngineFuelType VehicleSize VehicleStyle Crossover HighPerformance 
+TransmissionType Exotic Hatchback;
+run;
+/* a look at year3 for future use - not simple model can't interpret */
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic;
+model logMSRP= Year Year3 EngineHP EngineCylinders Luxury Exotic;
+run;
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic;
+model logMSRP= Year Year3 EngineHP EngineCylinders Luxury Exotic Popularity;
+run;
+proc glm data=car PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+class Luxury Exotic;
+model logMSRP= Year EngineHP EngineCylinders Luxury Exotic;
+run;
+/* if we restrict range for model 2 we should do the same for this I think */
+proc glm data=carRestrict PLOTS(MAXPOINTS=None )=(DIAGNOSTICS RESIDUALS);
+model MSRP= Year EngineHP EngineCylinders HighwayMPG CityMPG NumberOfDoors Popularity;
+run;
