@@ -178,10 +178,88 @@ This model need to be highly interpretable. We need to provide interpretation of
 ```{r}
 # Explore numerical variables
 train %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity)%>%ggpairs()
+# Try Log transformation on MSRP see if it will improve correlations
+train$logMSRP = log(train$MSRP)
+train %>% select(logMSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity)%>%ggpairs()
+# It looks like logMSRP has increased correlation with Year but decreased correlation with EngineHP, EngineCylinders
+# It's best to run LASSO and choose predictors on both with transformation and without Log transformation in order to identify which
+# Model performs better
+train = train[,-27]
+#str(train)
+library(glmnet)
+# Since we want a easy to interperate model, we don't want to use predictor Make and Model that has too many levels in the model
+train = train[,-(1:2)]
+str(train)
+#Dummy code categorical predictor variables
+x <- model.matrix(MSRP~.,train)[,-1]
+y <- log(train$MSRP)
+set.seed(123) # Need a seed number to keep same results for LASSO
+cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+par(mfrow=c(1,1))
+plot(cv.out)
+# Look at coefficients
+coef(cv.out, cv.out$lambda.min)
+# Seems like LASSO has selected all predictors, only few levels within EngineFuel, TransmissionType, VehicleStyle got turned off
+# Build model with predictors LASSO selected
+log.model1 = lm(log(MSRP)~.,data=train)
+par(mfrow=c(2,2))
+plot(log.model1)
+library(olsrr)
+ols_plot_cooksd_bar(log.model1)
+ols_plot_resid_stand(log.model1)
+# Residual looks okay~
+# Now try MSRP without log transformation
 
+#Dummy code categorical predictor variables
+x1 <- model.matrix(MSRP~.,train)[,-1]
+y1 <- train$MSRP
+set.seed(123) # Need a seed number to keep same results for LASSO
+cv.out1=cv.glmnet(x1,y1,alpha=1) #alpha=1 performs LASSO
+par(mfrow=c(1,1))
+plot(cv.out1)
+# Look at coefficients
+coef(cv.out1, cv.out1$lambda.min)
+# Again, all predictors are selected, only few levels are turned off
+regular.model1 = lm(MSRP~.,data=train)
+par(mfrow=c(2,2))
+plot(regular.model1)
+ols_plot_cooksd_bar(regular.model1)
+ols_plot_resid_stand(regular.model1)
 
+#############################################################################
+# By comparison Constant variance looks a lot better with the log(MSRP)...###
+# Since the assumption works best with this, next check with stepwise method to see what predictors will be selected
+stepwise.model1 =lm(log(MSRP)~.,data=train)
+ols_step_both_aic(stepwise.model1)
+# By Using StepwiseAIC variable selection method, the following predictors are selected
+# Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel
+log.model2.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel,data=train)
+par(mfrow=c(2,2))
+plot(log.model2.step)
+ols_plot_cooksd_bar(log.model2.step)
+ols_plot_resid_stand(log.model2.step)
+
+#compare test ASE results between stepwise model and 
+test = test[,-(1:2)]
+testMSRP = test$MSRP # GET real result 
+test = test[,-13] # Delete MSRP from test 
+# Calculate stepwise test ASE first
+pred.test.step = predict(log.model2.step,test)
+# exp values to return to original value
+pred.test.step = exp(pred.test.step)
+test_ASE_STEP = mean((testMSRP-pred.test.step)^2)
+test_ASE_STEP #497620223
+
+#Calculate LASSO test ASE
+pred.test.lasso = predict(log.model1,test)
+pred.test.lasso = exp(pred.test.lasso)
+test_ASE_LASSO = mean((testMSRP-pred.test.lasso)^2)
+test_ASE_LASSO #499722642
+
+# By comparison, it seems LASSO performs a bit worse than StepwiseAIC selected predictors...
 ```
 
+# Note: Rerun the code chunk for clean train/test/validate datasets - altered in Objective 1
 #### Objective 2 start without Log transformation - since there are so many categorical variables
 
 ```{r}
