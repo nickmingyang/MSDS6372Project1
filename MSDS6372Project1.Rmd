@@ -163,7 +163,9 @@ train = remains1[-test.index,]
 train = bind_rows(train,Not.Able.To.Split)
 
 dim(train)
-
+train = as.data.frame(train)
+test = as.data.frame(test)
+validate = as.data.frame(validate)
 str(train)
 str(CarData)
 ```
@@ -174,6 +176,9 @@ We are trying to analyse the importance of the "Popularity" variable. While the 
 This model need to be highly interpretable. We need to provide interpretation of the regression coefficients of the final model including hypothesis testing, interpretation of regression coefficients, and confidence intervals.
 
 ```{r}
+# Explore numerical variables
+train %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity)%>%ggpairs()
+
 
 ```
 
