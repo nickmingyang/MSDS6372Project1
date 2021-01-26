@@ -116,104 +116,9 @@ write.csv(CarData,"CleanedCarData.csv",row.names = FALSE)
 
 ```
 
-#### Objecive 1
-We are trying to analyse the importance of the "Popularity" variable. While the details of this variable is vague, it was created from social media, and the "higher ups" are curious how much general popularity can play a role in the retail price of a vehicle.
-
-```{r}
-library(tidyverse)
-library(ggplot2)
-library(GGally)
-# You need to adjust the work environment to run this code
-setwd("/Users/mingyang/Desktop/SMU/Applied Statistics/MSDS6372Project1")
-# Directly import cleaned dataset and start from here
-CarData = read.csv("CleanedCarData.csv")
-# Convert factor variables
-variables.to.factor = c("Make","Model","EngineFuelType","TransmissionType","DrivenWheels","MarketCategory","VehicleSize","VehicleStyle","Crossover","Diesel","Exotic","Luxury","HighPerformance","FactoryTuner","Performance","FlexFuel","Hatchback","Hybrid","N_A")
-CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
-summary(CarData)
-# Plot agsint numeric variables
-CarData %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity) %>% ggpairs()
-# Try Log transformation on MSRP
-CarData$LogMSRP = log(CarData$MSRP)
-# Recheck the logMSRP against numeric variables
-# LogMSRP seem to have improved linear relationship between Year and EngineHP correlations
-CarData %>% select(LogMSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity) %>% ggpairs()
-# Look at Popularity
-boxplot(CarData$Popularity)
-CarData %>% select(LogMSRP,Popularity)%>% ggpairs()
-#Try LogPopularity
-CarData$LogPopularity = log(CarData$Popularity)
-CarData %>% select(LogMSRP,LogPopularity)%>% ggpairs()
-# Look at original MSRP vs Popularity
-CarData %>% select(MSRP,Popularity)%>% ggpairs()
-#LogMSRP and LogPopularity seem to have improved the linearity relationship between the two
-# Look at histogram of LogMSRP
-CarData %>% ggplot(aes(x=LogMSRP))+geom_histogram(bins=100)
-# Drop MSRP and Popularity from the original Dataset
-CarData<-CarData[,-c(15,16)]
-# Drop MarketCategory - 72 levels are not useful for prediction
-CarData <-CarData[,-10]
-str(CarData)
-#Split data into 80% Train 10% Test 10% Validation set
-set.seed(111)
-train.test.index<-sample(1:dim(CarData)[1],10723,replace=F)
-train.test = CarData[train.test.index,]
-validate = CarData[-train.test.index,]
-set.seed(112)
-train.index = sample(1:dim(train.test)[1],9531,replace=F)
-train = train.test[train.index,]
-test = train.test[-train.index,]
-
-# Use Forward variable selection method to select possible variables as predictors
-library(leaps)
-reg.fwd=regsubsets(LogMSRP~.,data=train,method="forward",nvmax=955)
-par(mfrow=c(1,3))
-bics<-summary(reg.fwd)$bic
-plot(1:956,bics,type="l",ylab="BIC",xlab="# of predictors")
-index<-which(bics==min(bics))
-points(index,bics[index],col="red",pch=10)
-
-adjr2<-summary(reg.fwd)$adjr2
-plot(1:956,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
-index<-which(adjr2==max(adjr2))
-points(index,adjr2[index],col="red",pch=10)
-
-rss<-summary(reg.fwd)$rss
-plot(1:956,rss,type="l",ylab="train RSS",xlab="# of predictors")
-index<-which(rss==min(rss))
-points(index,rss[index],col="red",pch=10)
-
-coef(reg.fwd,676)
-# By using Forward method, 676 predictors seem to generate the smallest BIC number
-# This model has selected predictors below:
-# Make+Model+EngineFuelType+TransmissionType+VehicleSize+VehicleStyle+HighwayMPG+CityMPG+Luxury+FactoryTuner+Performance+FlexFuel+Hybrid+N_A+Exotic+Hatchback+LogPopularity
-forward.regression = lm(LogMSRP~Make+Model+EngineFuelType+TransmissionType+VehicleSize+VehicleStyle+HighwayMPG+CityMPG+Luxury+FactoryTuner+Performance+FlexFuel+Hybrid+N_A+Exotic+Hatchback+LogPopularity,data=train)
-summary(forward.regression)
-par(mfrow=c(2,2))
-plot(forward.regression)
-library(olsrr)
-ols_plot_cooksd_bar(forward.regression)
-ols_plot_resid_stand(forward.regression)
-# After observing the Cook's D, there is observation 4659, 9435 has extremely large Cook's D
-# Observation 1523 also has large Cook's D
-train[4659,] # Toyota Yaris iA
-exp(train[4659,25]) 
-train%>% filter(Make=="Toyota") %>% select(Make,Model,Year,LogMSRP)
-# Can't really make sense to eliminate observation 4659
-
-train[9435,] # Ferrari Superamerica 2005
-exp(train[9435,25]) # Exotic Car
-
-#Look at other Exotic Cars
-train%>%filter(Exotic=="Yes")%>% select(Make,Model,Year,LogMSRP,LogPopularity)
-# Don't really make sense to delete observation 4659 either
-
-# Since there are so many categorical variables, and log transformation improvement on Year and EngineHP didn't make it to the final model
-# Next section we will try reimport the dataset without transformation
-```
-
-#### Objective 1 continue without Log transformation - since there are so many categorical variables
-
+# Start Here... Load in cleanedData, delete over 1 million dollar cars
+## split dataset into train/test/validate sets with set seed number
+### Models that only have 5 observations will all end up in train set
 ```{r}
 library(tidyverse)
 library(ggplot2)
@@ -261,6 +166,20 @@ dim(train)
 
 str(train)
 str(CarData)
+```
+
+#### Objecive 1
+We are trying to analyse the importance of the "Popularity" variable. While the details of this variable is vague, it was created from social media, and the "higher ups" are curious how much general popularity can play a role in the retail price of a vehicle.
+
+This model need to be highly interpretable. We need to provide interpretation of the regression coefficients of the final model including hypothesis testing, interpretation of regression coefficients, and confidence intervals.
+
+```{r}
+
+```
+
+#### Objective 2 start without Log transformation - since there are so many categorical variables
+
+```{r}
 # Use Forward variable selection method to select possible variables as predictors
 ########################################
 # Try Forward selection model.##########
