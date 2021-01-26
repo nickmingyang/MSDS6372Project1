@@ -222,6 +222,10 @@ library(GGally)
 setwd("/Users/mingyang/Desktop/SMU/Applied Statistics/MSDS6372Project1")
 # Directly import cleaned dataset and start from here
 CarData = read.csv("CleanedCarData.csv")
+###################################################################################
+# Restrict prediction range to over cars under 1 million... To improve precision###
+###################################################################################
+CarData = CarData %>% filter(MSRP < 1000000)
 # Convert factor variables
 variables.to.factor = c("Make","Model","EngineFuelType","TransmissionType","DrivenWheels","MarketCategory","VehicleSize","VehicleStyle","Crossover","Diesel","Exotic","Luxury","HighPerformance","FactoryTuner","Performance","FlexFuel","Hatchback","Hybrid","N_A")
 CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
@@ -232,13 +236,13 @@ CarData = CarData[,-10] #delete MarketCategory
 # Try different way of sampling by Models
 
 ######### Try Something else to split data ############
-# First 842 are Models that only have 5 observations or less
+# First 836 are Models that only have 5 observations or less - deleted 6 card over 1 million dollars
 ModelList = CarData%>% group_by(Model) %>% mutate(ModelCount = n()) %>% arrange(ModelCount)
 #arrange(ModelList,desc(count))%>%print(n = Inf)
 # Can only split train/test/validate set on Models that has 6 observations or more
 ModelList = ModelList[,-27]
-Not.Able.To.Split = ModelList[(1:842),]
-Able.To.Split = ModelList[-(1:842),]
+Not.Able.To.Split = ModelList[(1:836),]
+Able.To.Split = ModelList[-(1:836),]
 
 # Split Train, test, validate based on able to Train Data...
 set.seed(111)
@@ -252,6 +256,7 @@ train = remains1[-test.index,]
 
 # Joining train set with dataset that been left out
 train = bind_rows(train,Not.Able.To.Split)
+
 dim(train)
 
 str(train)
@@ -261,29 +266,29 @@ str(CarData)
 # Try Forward selection model.##########
 ########################################
 library(leaps)
-reg.fwd=regsubsets(MSRP~.,data=train,method="forward",nvmax=966)
+reg.fwd=regsubsets(MSRP~.,data=train,method="forward",nvmax=963)
 par(mfrow=c(1,3))
 bics<-summary(reg.fwd)$bic
-plot(1:967,bics,type="l",ylab="BIC",xlab="# of predictors")
+plot(1:964,bics,type="l",ylab="BIC",xlab="# of predictors")
 index<-which(bics==min(bics))
 points(index,bics[index],col="red",pch=10)
 
 adjr2<-summary(reg.fwd)$adjr2
-plot(1:967,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
+plot(1:964,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
 index<-which(adjr2==max(adjr2))
 points(index,adjr2[index],col="red",pch=10)
 
 rss<-summary(reg.fwd)$rss
-plot(1:967,rss,type="l",ylab="train RSS",xlab="# of predictors")
+plot(1:964,rss,type="l",ylab="train RSS",xlab="# of predictors")
 index<-which(rss==min(rss))
 points(index,rss[index],col="red",pch=10)
 
 # how many predictors gives the best BIC?
 which(bics==min(bics))
-coef(reg.fwd,305)
+coef(reg.fwd,349)
 # By looking at this model, it has selected following predictors:
-# Make+Model+EngineFuelType+VehicleSize+VehicleStyle+Crossover+HighPerformance+TransmissionType+Exotic+Hatchback
-forward.regression = lm(MSRP~Make+Model+EngineFuelType+VehicleSize+VehicleStyle+Crossover+HighPerformance+TransmissionType+Exotic+Hatchback,data=train)
+# Make+Model+Year+EngineFuelType+NumberOfDoors+VehicleSize+VehicleStyle+CityMPG+Luxury+TransmissionType+Exotic+Hatchback
+forward.regression = lm(MSRP~Make+Model+Year+EngineFuelType+NumberOfDoors+VehicleSize+VehicleStyle+CityMPG+Luxury+TransmissionType+Exotic+Hatchback,data=train)
 summary(forward.regression)
 # This model has higher adjusted R-squared compared to the Log transformed model
 par(mfrow=c(2,2))
@@ -291,39 +296,36 @@ plot(forward.regression)
 library(olsrr)
 ols_plot_cooksd_bar(forward.regression)
 ols_plot_resid_stand(forward.regression)
-# Cook's D plot looks okay - Much better than Log Transformed Plot
-#Observation 3748,9152,9153 seem to have problem on the residual plot
-summary(train[3748,]) # Ford Focus ... Not sure if we can delete this...
-summary(train[9152,]) # Bugatti ... Delete?
-summary(train[9153,]) # Bugatti ... Delete?
-summary(train[1043,]) # Volvo ... Not seem to cause too much trouble on Cook's D
+# Cook's D plot looks okay 
+# Residual plot... ???
+
 
 ########################################
 # Try Backward elimination model.#######
 ########################################
-reg.bwd=regsubsets(MSRP~.,data=train,method="backward",nvmax=966)
+reg.bwd=regsubsets(MSRP~.,data=train,method="backward",nvmax=963)
 par(mfrow=c(1,3))
 bics<-summary(reg.bwd)$bic
-plot(1:967,bics,type="l",ylab="BIC",xlab="# of predictors")
+plot(1:964,bics,type="l",ylab="BIC",xlab="# of predictors")
 index<-which(bics==min(bics))
 points(index,bics[index],col="red",pch=10)
 
 adjr2<-summary(reg.bwd)$adjr2
-plot(1:967,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
+plot(1:964,adjr2,type="l",ylab="Adjusted R-squared",xlab="# of predictors")
 index<-which(adjr2==max(adjr2))
 points(index,adjr2[index],col="red",pch=10)
 
 rss<-summary(reg.bwd)$rss
-plot(1:967,rss,type="l",ylab="train RSS",xlab="# of predictors")
+plot(1:964,rss,type="l",ylab="train RSS",xlab="# of predictors")
 index<-which(rss==min(rss))
 points(index,rss[index],col="red",pch=10)
 
 # how many predictors gives the best BIC?
 which(bics==min(bics))
-coef(reg.bwd,248)
+coef(reg.bwd,410)
 # Predictor for backward elimination method based on lowest BIC value
-# Make+Model+EngineFuelType+VehicleSize+Crossover+HighPerformance+Hybrid+VehicleStyle+Exotic
-backward.regression = lm(MSRP~Make+Model+EngineFuelType+VehicleSize+Crossover+HighPerformance+Hybrid+VehicleStyle+Exotic,data=train)
+# Make+Model+EngineFuelType+NumberOfDoors+VehicleSize+VehicleStyle+CityMPG+Luxury+FactoryTuner+FlexFuel+Exotic+Hatchback
+backward.regression = lm(MSRP~Make+Model+EngineFuelType+NumberOfDoors+VehicleSize+VehicleStyle+CityMPG+Luxury+FactoryTuner+FlexFuel+Exotic+Hatchback,data=train)
 summary(backward.regression)
 # Forward select has higher adjusted R-squared compared to backward method
 par(mfrow=c(2,2))
@@ -354,7 +356,7 @@ lasso.model = glmnet(x,y,alpha = 1,lambda = cv.out$lambda.min)
 
 #Dummy code test set to see performance compare to other methods
 xtest<-model.matrix(MSRP~.,test)[,-1]
-ytest<-test$MSRP #36461071
+ytest<-test$MSRP #36302210
 
 # See prediction
 lasso.pred=predict(lasso.model ,newx=xtest)
@@ -373,13 +375,13 @@ test = test[,-15] #delete MSRP for prediction
 forward.pred = predict(forward.regression,test)
 # See forward test ASE
 testMSE_Forward<-mean((test.result-forward.pred)^2)
-testMSE_Forward #46312425
+testMSE_Forward #46054176
 
 #Backward test results
 backward.pred = predict(backward.regression,test)
 # See backward test ASE
 testMSE_Backward<-mean((test.result-backward.pred)^2)
-testMSE_Backward #48317165
+testMSE_Backward #44935730
 
 ```
 
