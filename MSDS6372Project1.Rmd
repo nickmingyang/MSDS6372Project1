@@ -187,6 +187,7 @@ train %>% select(logMSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,
 train = train[,-27]
 #str(train)
 library(glmnet)
+library(car)
 # Since we want a easy to interperate model, we don't want to use predictor Make and Model that has too many levels in the model
 train = train[,-(1:2)]
 str(train)
@@ -202,8 +203,35 @@ coef(cv.out, cv.out$lambda.min)
 # Seems like LASSO has selected all predictors, only few levels within EngineFuel, TransmissionType, VehicleStyle got turned off
 # Build model with predictors LASSO selected
 log.model1 = lm(log(MSRP)~.,data=train)
+# Check VIF
+summary(log.model1)
+# TransmissionType and Hatchback provides NA on summary statistic, try remove them as predictors
+log.model2 = lm(log(MSRP)~.- TransmissionType - Hatchback,data=train)
+summary(log.model2)
+# Look at VIF
+vif(log.model2)[,3]^2
+# CityMPG has really high VIF remove it from model
+log.model3 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG,data=train)
+# Look at VIF
+vif(log.model3)[,3]^2
+# NumberOfDoors has really high VIF remove from model
+log.model4 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors,data=train)
+# Look at VIF
+vif(log.model4)[,3]^2
+# HighwayMPG still have over 10 VIF, remove from model
+log.model5 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG,data=train)
+vif(log.model5)[,3]^2
+# Diesel is not significant, HighPerformance is not significant, Performance is not significant Remove from simple model
+log.model6 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance,data=train)
+vif(log.model6)[,3]^2
+# N_A is still not significant, remove from model
+log.model7 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance - N_A,data=train)
+vif(log.model7)[,3]^2
+summary(log.model7)
+# Model 7 is a highly interpretable model with decent R-squared.
+
 par(mfrow=c(2,2))
-plot(log.model1)
+plot(log.model7)
 library(olsrr)
 ols_plot_cooksd_bar(log.model1)
 ols_plot_resid_stand(log.model1)
@@ -221,8 +249,30 @@ plot(cv.out1)
 coef(cv.out1, cv.out1$lambda.min)
 # Again, all predictors are selected, only few levels are turned off
 regular.model1 = lm(MSRP~.,data=train)
+summary(regular.model1)
+# Delete Hatchback & TransmissionType... NA on summary table
+regular.model2 = lm(MSRP~.-Hatchback-TransmissionType,data=train)
+vif(regular.model2)[,3]^2
+# remove CityMPG - highest VIF, larger than 29
+regular.model3 = lm(MSRP~.-Hatchback-TransmissionType-CityMPG,data=train)
+vif(regular.model3)[,3]^2
+# remove NumberOfDoors
+regular.model4 = lm(MSRP~.-Hatchback-TransmissionType-CityMPG-NumberOfDoors,data=train)
+vif(regular.model4)[,3]^2
+# HighwayMPG still over 10
+regular.model5 = lm(MSRP~.-Hatchback-TransmissionType-CityMPG-NumberOfDoors-HighwayMPG,data=train)
+vif(regular.model5)[,3]^2
+summary(regular.model5)
+# FlexFuel has the highest P value in terms of significance - delete
+regular.model6 = lm(MSRP~.-Hatchback-TransmissionType-CityMPG-NumberOfDoors-HighwayMPG-FlexFuel,data=train)
+vif(regular.model6)[,3]^2
+summary(regular.model6)
+#Diesel is high in p-value delete
+regular.model7 = lm(MSRP~.-Hatchback-TransmissionType-CityMPG-NumberOfDoors-HighwayMPG-FlexFuel-Diesel,data=train)
+vif(regular.model7)[,3]^2
+summary(regular.model7)
 par(mfrow=c(2,2))
-plot(regular.model1)
+plot(regular.model1) # Residual plot doesn't look as well as log(MSRP) residual so tranformation is necessary.
 ols_plot_cooksd_bar(regular.model1)
 ols_plot_resid_stand(regular.model1)
 
@@ -234,29 +284,55 @@ ols_step_both_aic(stepwise.model1)
 # By Using StepwiseAIC variable selection method, the following predictors are selected
 # Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel
 log.model2.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel,data=train)
-par(mfrow=c(2,2))
-plot(log.model2.step)
-ols_plot_cooksd_bar(log.model2.step)
-ols_plot_resid_stand(log.model2.step)
+summary(log.model2.step)
+# TransmissionType has NA need to be deleted
+log.model3.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel,data=train)
+summary(log.model3.step)
+vif(log.model3.step)[,3]^2
+# CityMPG has the highest VIF - delete
+log.model4.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A+Diesel,data=train)
+vif(log.model4.step)[,3]^2
+# HighwayMPG still over 10, delete
+log.model5.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A+Diesel,data=train)
+vif(log.model5.step)[,3]^2
+summary(log.model5.step)
+#FlexFuel has the highest insignificant P-value delete
+log.model6.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A+Diesel,data=train)
+summary(log.model6.step)
+#Diesel has the highest insignificant P-value delete
+log.model7.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A,data=train)
+summary(log.model7.step)
+#N_A has the highest insignificant P-value delete
+log.model8.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity,data=train)
+summary(log.model8.step)
 
-#compare test ASE results between stepwise model and 
+par(mfrow=c(2,2))
+plot(log.model8.step)
+ols_plot_cooksd_bar(log.model8.step)
+ols_plot_resid_stand(log.model8.step)
+
+# LASSO and STEPWISE came to slight different Model in terms of predictor and r-squared value.
+# LASSO r-squared 0.8426, adjusted r-squared 0.8419
+# Stepwise r-squared 0.843, adjusted r-squared 0.8424
+#compare test ASE results between stepwise model and LASSO
 test = test[,-(1:2)]
 testMSRP = test$MSRP # GET real result 
 test = test[,-13] # Delete MSRP from test 
 # Calculate stepwise test ASE first
-pred.test.step = predict(log.model2.step,test)
+pred.test.step = predict(log.model8.step,test)
 # exp values to return to original value
 pred.test.step = exp(pred.test.step)
 test_ASE_STEP = mean((testMSRP-pred.test.step)^2)
-test_ASE_STEP #497620223
+test_ASE_STEP #560738819
 
 #Calculate LASSO test ASE
-pred.test.lasso = predict(log.model1,test)
+pred.test.lasso = predict(log.model7,test)
 pred.test.lasso = exp(pred.test.lasso)
 test_ASE_LASSO = mean((testMSRP-pred.test.lasso)^2)
-test_ASE_LASSO #499722642
+test_ASE_LASSO #571497373
 
-# By comparison, it seems LASSO performs a bit worse than StepwiseAIC selected predictors...
+# By comparison, Stepwise model workflow provided the best model in terms of r-squared, adjusted r-squared and test ASE.
+# Move forward with the analysis with log.model8.step
 ```
 
 # Note: Rerun the code chunk for clean train/test/validate datasets - altered in Objective 1
