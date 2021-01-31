@@ -1,0 +1,270 @@
+CarData=CleanedCarData
+
+############# Nick's Code to get train/test split ###############
+CarData = CarData %>% filter(MSRP < 1000000)
+# Convert factor variables
+variables.to.factor = c("Make","Model","EngineFuelType","TransmissionType","DrivenWheels","MarketCategory","VehicleSize","VehicleStyle","Crossover","Diesel","Exotic","Luxury","HighPerformance","FactoryTuner","Performance","FlexFuel","Hatchback","Hybrid","N_A")
+CarData[variables.to.factor] = lapply(CarData[variables.to.factor],factor)
+summary(CarData)
+# Plot agsint numeric variables
+# CarData %>% select(MSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,HighwayMPG,CityMPG,Popularity) %>% ggpairs()
+CarData = CarData[,-10] #delete MarketCategory
+# Try different way of sampling by Models
+######### Try Something else to split data ############
+# First 836 are Models that only have 5 observations or less - deleted 6 card over 1 million dollars
+ModelList = CarData%>% group_by(Model) %>% mutate(ModelCount = n()) %>% arrange(ModelCount)
+#arrange(ModelList,desc(count))%>%print(n = Inf)
+# Can only split train/test/validate set on Models that has 6 observations or more
+ModelList = ModelList[,-27]
+Not.Able.To.Split = ModelList[(1:836),]
+Able.To.Split = ModelList[-(1:836),]
+# Split Train, test, validate based on able to Train Data...
+set.seed(111)
+validate.set.index<-sample(1:dim(Able.To.Split)[1],1191,replace=F)
+validate = Able.To.Split[validate.set.index,]
+remains1 = Able.To.Split[-validate.set.index,]
+set.seed(112)
+test.index = sample(1:dim(remains1)[1],1191,replace=F)
+test = remains1[test.index,]
+train = remains1[-test.index,]
+# Joining train set with dataset that been left out
+train = bind_rows(train,Not.Able.To.Split)
+dim(train)
+train = as.data.frame(train)
+test = as.data.frame(test)
+validate = as.data.frame(validate)
+str(train)
+str(CarData)
+
+########### Model 1 ################
+# As EDA demonstrated, MSRP should be logged
+train$logMSRP = log(train$MSRP)
+simple.model.1=lm(logMSRP~Year+EngineHP+Exotic+Luxury+EngineCylinders, data=train)
+summary(simple.model.1)
+# This model, with only 5 predictors and 5 coefficients, has adjusted R2=0.818
+# Also, conceptually, it makes a lot of sense
+
+# A correlation plot of numerical variables:
+library(corrplot)
+dev.off()
+Numerical = train %>% select(logMSRP,Year,EngineHP,EngineCylinders,NumberOfDoors,
+                     HighwayMPG,CityMPG,Popularity)
+NumericalCor = cor(Numerical)
+corrplot(NumericalCor,tl.cex=.6)
+# This plot supports the use of Year, EngineHP, and EngineCylinders in simple model
+# Also highlights the possible collinearity of EngineHP&EngineCylinders, CityMPG&HwyMPG,
+# HwyMPG&EngineCylinders, and CityMPG&EngineCylinders
+# All of these make check with common sense.
+
+# Summary Stats
+library(gt)
+library(gtsummary)
+train %>% select(Year,EngineFuelType,EngineHP,EngineCylinders,TransmissionType,
+                DrivenWheels,NumberOfDoors,VehicleStyle,HighwayMPG,CityMPG,
+                Popularity,MSRP,Crossover,Diesel,Exotic,Luxury,HighPerformance,
+                FactoryTuner,FlexFuel,Hatchback,Hybrid,N_A) %>% 
+  tbl_summary(statistic = list(all_continuous() ~ "{mean} ({sd})"))
+
+train %>% tbl_summary()
+summary(train)
+
+
+# Let's see what we come up w/ doing some automated selection:
+library(leaps)
+# Remove make and model for automated selection
+simple.train = train[,-(1:2)]
+# and remove MSRP
+simple.train = simple.train[,-12]
+# and remove model count
+simple.train = simple.train[,-23]
+# make a simple.test too:
+test$logMSRP = log(test$MSRP)
+simple.test = test[,-(1:2)]
+simple.test = simple.test[,-12]
+simple.test = simple.test[,-23]
+reg.fwd=regsubsets(logMSRP~.,data=simple.train,method="forward",nvmax=8)
+summary(reg.fwd)
+# Step 1: Year
+# Step 2: EngineHP
+# Step 3: Exotic
+# Step 4: EngineFuelTypepremium unleaded (required)
+# Step 5: TransmissionTypeMANUAL
+# Step 6: Luxury
+# Step 7: EngineCylinders
+summary(reg.fwd)$adjr2
+summary(reg.fwd)$rss
+summary(reg.fwd)$bic
+
+
+# Engine Fuel type has 10 levels.  We may not want to interpret all of those.
+# Because the level that came up was premium unleaded(required), 
+# this could have a lot of overlap with Luxury and Exotic
+train %>% ggplot(aes(x=Luxury, fill=EngineFuelType)) + geom_bar()
+train %>% ggplot(aes(x=Exotic, fill=EngineFuelType)) + geom_bar()
+train %>% filter(Luxury=="No") %>% ggplot(aes(x=Exotic, fill=EngineFuelType)) + geom_bar()
+train %>% filter(Exotic=="No") %>% ggplot(aes(x=Luxury, fill=EngineFuelType)) + geom_bar()
+# obviously there are some non exotic/luxury with this fuel requirement, 
+# but there's a great deal of overlap if we don't want to interpret 10 fuel types
+
+# Some visualizations to see what's going on
+library(viridis)
+train %>% ggplot(aes(x=logMSRP, y=Year, color=EngineFuelType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+# premium unleaded (required) is the most interesting part of that I think
+train %>% ggplot(aes(x=logMSRP, y=Year, color=TransmissionType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+# Automated_manual is high end
+train %>% ggplot(aes(x=logMSRP, y=Year, color=Exotic)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+# Well we knew this one was important.  Clearly
+train %>% ggplot(aes(x=logMSRP, y=Year, color=Luxury)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+# A bit more mixed in than I thought, but still looks useful
+train %>% ggplot(aes(x=logMSRP, y=EngineHP, color=Exotic)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=EngineHP, color=Luxury)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=EngineHP, color=EngineCylinders)) + 
+  geom_point(position="jitter") + scale_color_viridis(option='D')
+# I wonder what those outlying yellow ones are...
+p=train %>% ggplot(aes(x=logMSRP, y=EngineHP, color=EngineCylinders)) + 
+  geom_point(position="jitter") + scale_color_viridis(option='D')
+library(plotly)
+ggplotly(p)
+# old (early 90s) Mercedes-Benz 600 class and BMW 8 series
+train %>% ggplot(aes(x=logMSRP, y=EngineHP, color=EngineFuelType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=EngineHP, color=TransmissionType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=EngineCylinders, color=EngineFuelType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=EngineCylinders, color=TransmissionType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, fill=Hybrid)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=Exotic)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=Luxury)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=Hatchback)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=FlexFuel)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=Performance)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=FactoryTuner)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=HighPerformance)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=Crossover)) + 
+  geom_boxplot() + scale_fill_viridis_d(begin=.5, end=.9)
+train %>% ggplot(aes(x=logMSRP, fill=DrivenWheels)) + 
+  geom_boxplot() + scale_fill_viridis_d()
+train %>% ggplot(aes(x=logMSRP, fill=TransmissionType)) + 
+  geom_boxplot() + scale_fill_viridis_d()
+train %>% ggplot(aes(x=logMSRP, fill=VehicleStyle)) + 
+  geom_boxplot() + scale_fill_viridis_d()
+
+# A look at popularity
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=Luxury)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=Exotic)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=Hybrid)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=Hatchback)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=FlexFuel)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=Popularity, fill=EngineFuelType)) + 
+  geom_boxplot() + scale_fill_viridis_d()
+train %>% ggplot(aes(x=Popularity, fill=FlexFuel)) + 
+  geom_boxplot() + scale_fill_viridis_d()
+# Popularity and EngineFuelType have an interesting relationship
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=Performance)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=FactoryTuner)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=HighPerformance)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=Crossover)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=DrivenWheels)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=TransmissionType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=EngineFuelType)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=logMSRP, y=Popularity, color=VehicleStyle)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+train %>% ggplot(aes(x=Year, y=Popularity)) + 
+  geom_point(position="jitter") + scale_color_viridis_d()
+# I find this plot surprising.  That top number is Popularity seems consistent 
+# throughout the whole Year scale
+view(train %>% group_by(Make) %>% 
+  summarise(count=n(),mean(Popularity)))
+# Well, Ford is REALLY popular
+view(train %>% group_by(Year) %>% 
+       summarise(count=n(),mean(Popularity)))
+# Surprisingly consistent
+
+# I'm curious what EngineFuelType adds after Luxury and Exotic in model
+# First the basic model:
+simple.model.1=lm(logMSRP~Year+EngineHP+Exotic+Luxury+EngineCylinders, data=train)
+summary(simple.model.1) #adjR2=0.818
+# Add EngineFuelType
+simple.model.2=lm(logMSRP~Year+EngineHP+Exotic+Luxury+EngineCylinders+EngineFuelType, data=train)
+summary(simple.model.2) #adjR2=0.8288
+# Maybe we could simplify the fuel type?  Like reg/premium/flexfuel/electric?
+
+# Look at simple model plus TransmissionType
+simple.model.3=lm(logMSRP~Year+EngineHP+Exotic+Luxury+EngineCylinders+TransmissionType, data=train)
+summary(simple.model.3) #adjR2=0.8211
+
+# Try Lasso
+library(glmnet)
+#Formatting data for GLM net
+x=model.matrix(logMSRP~.,simple.train)[,-1]
+y=simple.train$logMSRP
+
+xtest<-model.matrix(logMSRP~.,simple.test)[,-1]
+ytest<-simple.test$logMSRP
+
+grid=10^seq(10,-2, length =100)
+lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+
+cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+plot(cv.out)
+bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+coef(lasso.mod,s=bestlambda)
+lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
+
+testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+testMSE_LASSO
+# 32 predictors is a bit excessive
+
+# For reference: model from Nick's code:
+log.model7 = lm(logMSRP~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance - N_A,data=simple.train)
+summary(log.model7) # adjR2=0.8417
+
+# Adjust it a bit
+# What if we take out vehicle style?
+log.model8 = lm(logMSRP~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance - N_A - VehicleStyle,data=simple.train)
+summary(log.model8) # adjR2=0.8331
+# Also DrivenWheels
+log.model9 = lm(logMSRP~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance - N_A - VehicleStyle - DrivenWheels,data=simple.train)
+summary(log.model9) # adjR2=0.8322
+
+# Take a look at the flex-fuel EngineFuel and the FlexFuelYes category:
+levels(CarData$EngineFuelType)
+CarData %>% filter(EngineFuelType=="flex-fuel (premium unleaded recommended/E85)" | 
+                     EngineFuelType=="flex-fuel (premium unleaded required/E85)" |
+                     EngineFuelType=="flex-fuel (unleaded/E85)" |
+                     EngineFuelType=="flex-fuel (unleaded/natural gas)") %>%
+  count(FlexFuel)
+CarData %>% filter(EngineFuelType=="flex-fuel (premium unleaded recommended/E85)" | 
+                     EngineFuelType=="flex-fuel (premium unleaded required/E85)" |
+                     EngineFuelType=="flex-fuel (unleaded/E85)" |
+                     EngineFuelType=="flex-fuel (unleaded/natural gas)") %>% 
+  filter(FlexFuel=="No")
+# We should probably fix these for accuracy.  Might make the FlexFuel category better.
