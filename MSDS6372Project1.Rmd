@@ -223,12 +223,20 @@ vif(log.model4)[,3]^2
 log.model5 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG,data=train)
 vif(log.model5)[,3]^2
 summary(log.model5)
-# Diesel is not significant, HighPerformance is not significant, Performance is not significant Remove from simple model
-log.model6 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance,data=train)
+# HighPerformance has the least statistical significance - delete
+log.model6 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - HighPerformance, data=train)
 vif(log.model6)[,3]^2
 summary(log.model6)
-# N_A is still not significant, remove from model
-log.model7 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance - N_A,data=train)
+# Diesel has the least statistical significance - delete
+log.model6 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - HighPerformance - Diesel, data=train)
+vif(log.model6)[,3]^2
+summary(log.model6)
+# N_A has the least statistical significance - delete
+log.model6 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - HighPerformance - Diesel - N_A, data=train)
+vif(log.model6)[,3]^2
+summary(log.model6)
+# Performance is still not significant, remove from model
+log.model7 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - HighPerformance - Diesel - N_A - Performance, data=train)
 vif(log.model7)[,3]^2
 summary(log.model7)
 # Model 7 is a highly interpretable model with decent R-squared.
@@ -285,28 +293,25 @@ ols_plot_resid_stand(regular.model1)
 stepwise.model1 =lm(log(MSRP)~.,data=train)
 ols_step_both_aic(stepwise.model1)
 # By Using StepwiseAIC variable selection method, the following predictors are selected
-# Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel
-log.model2.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel,data=train)
+# Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+NumberOfDoors+Crossover+FactoryTuner+Popularity+CityMPG+N_A
+log.model2.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+TransmissionType+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+NumberOfDoors+Crossover+FactoryTuner+Popularity+CityMPG+N_A,data=train)
 summary(log.model2.step)
 # TransmissionType has NA need to be deleted
-log.model3.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+CityMPG+Popularity+N_A+Diesel,data=train)
+log.model3.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+NumberOfDoors+Crossover+FactoryTuner+Popularity+CityMPG+N_A,data=train)
 summary(log.model3.step)
 vif(log.model3.step)[,3]^2
 # CityMPG has the highest VIF - delete
-log.model4.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A+Diesel,data=train)
+log.model4.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A,data=train)
 vif(log.model4.step)[,3]^2
-# HighwayMPG still over 10, delete
-log.model5.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+FlexFuel+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A+Diesel,data=train)
+# NumberOfDoors highest VIF - delete
+log.model5.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+HighwayMPG+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+Crossover+FactoryTuner+Popularity+N_A,data=train)
+vif(log.model5.step)[,3]^2
+# HighwayMPG still over 10 - delete
+log.model5.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+Crossover+FactoryTuner+Popularity+N_A,data=train)
 vif(log.model5.step)[,3]^2
 summary(log.model5.step)
-#FlexFuel has the highest insignificant P-value delete
-log.model6.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A+Diesel,data=train)
-summary(log.model6.step)
-#Diesel has the highest insignificant P-value delete
-log.model7.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity+N_A,data=train)
-summary(log.model7.step)
 #N_A has the highest insignificant P-value delete
-log.model8.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+NumberOfDoors+Crossover+FactoryTuner+Popularity,data=train)
+log.model8.step = lm(log(MSRP)~Year+EngineHP+Exotic+EngineFuelType+VehicleStyle+Hybrid+EngineCylinders+Luxury+VehicleSize+DrivenWheels+FlexFuel+Crossover+FactoryTuner+Popularity,data=train)
 summary(log.model8.step)
 
 par(mfrow=c(2,2))
@@ -326,13 +331,13 @@ pred.test.step = predict(log.model8.step,test)
 # exp values to return to original value
 pred.test.step = exp(pred.test.step)
 test_ASE_STEP = mean((testMSRP-pred.test.step)^2)
-test_ASE_STEP #560738819
+test_ASE_STEP #571362858
 
 #Calculate LASSO test ASE
 pred.test.lasso = predict(log.model7,test)
 pred.test.lasso = exp(pred.test.lasso)
 test_ASE_LASSO = mean((testMSRP-pred.test.lasso)^2)
-test_ASE_LASSO #571497373
+test_ASE_LASSO #571362858
 
 # By comparison, Stepwise model workflow provided the best model in terms of r-squared, adjusted r-squared and test ASE.
 # Move forward with the analysis with log.model8.step
