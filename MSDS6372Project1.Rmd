@@ -75,6 +75,8 @@ for(j in 1:dim(marketCat)[1]){
 }
 # Performance is being handled individually...
 CarData$Performance = ifelse(grepl("Performance",CarData$Market.Category)&(!grepl("High-Performance",CarData$Market.Category)),"Yes","No")
+# Flex Fuel column if EngineFuelType has flex-fuel
+CarData$`Flex Fuel` = ifelse(grepl("flex-fuel",CarData$Engine.Fuel.Type)&CarData$`Flex Fuel`=="No","Yes",CarData$`Flex Fuel`)
 
 # Convert factor variables
 variables.to.factor = c("Make","Model","Engine.Fuel.Type","Transmission.Type","Driven_Wheels","Market.Category","Vehicle.Size","Vehicle.Style","Crossover","Diesel","Exotic","Luxury","High-Performance","Factory Tuner","Performance","Flex Fuel","Hatchback","Hybrid","N/A")
@@ -106,7 +108,6 @@ CarData %>% filter(HighwayMPG==354)
 CarData$HighwayMPG = ifelse(CarData$HighwayMPG==354,34,CarData$HighwayMPG)
 
 # Look at summary of data
-summary(CarData$VehicleStyle)
 str(CarData)
 # Look at missing Data if any
 # missingData = CarData[rowSums(is.na(CarData)) > 0,]
@@ -221,9 +222,11 @@ vif(log.model4)[,3]^2
 # HighwayMPG still have over 10 VIF, remove from model
 log.model5 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG,data=train)
 vif(log.model5)[,3]^2
+summary(log.model5)
 # Diesel is not significant, HighPerformance is not significant, Performance is not significant Remove from simple model
 log.model6 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance,data=train)
 vif(log.model6)[,3]^2
+summary(log.model6)
 # N_A is still not significant, remove from model
 log.model7 = lm(log(MSRP)~.- TransmissionType - Hatchback - CityMPG - NumberOfDoors - HighwayMPG - Diesel - HighPerformance - Performance - N_A,data=train)
 vif(log.model7)[,3]^2
