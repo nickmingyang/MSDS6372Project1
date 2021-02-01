@@ -244,8 +244,8 @@ summary(log.model7)
 par(mfrow=c(2,2))
 plot(log.model7)
 library(olsrr)
-ols_plot_cooksd_bar(log.model1)
-ols_plot_resid_stand(log.model1)
+ols_plot_cooksd_bar(log.model7)
+ols_plot_resid_stand(log.model7)
 # Residual looks okay~
 # Now try MSRP without log transformation
 
