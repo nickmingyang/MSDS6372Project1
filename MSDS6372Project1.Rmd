@@ -441,8 +441,6 @@ coefficients = coef(cv.out, cv.out$lambda.min)
 head(coefficients)
 # Compute the final lasso model
 lasso.model = glmnet(x,y,alpha = 1,lambda = cv.out$lambda.min)
-# Check assumptions
-
 #Dummy code test set to see performance compare to other methods
 xtest<-model.matrix(MSRP~.,test)[,-1]
 ytest<-test$MSRP #36302210
@@ -452,6 +450,82 @@ lasso.pred=predict(lasso.model ,newx=xtest)
 # See test ASE
 testMSE_LASSO<-mean((ytest-lasso.pred)^2)
 testMSE_LASSO
+################
+# In order to look at assumption, need to refit the model based on LASSO selected variables...
+# Check coefficients and see what got turn off:
+# - Crossover (only one turned off, others are within factor levels that are significant)
+################
+lasso.lm = lm(MSRP~.-Crossover,data=train)
+summary(lasso.lm)
+# Check Assumptions
+par(mfrow=c(2,2))
+plot(lasso.lm)
+library(olsrr)
+ols_plot_cooksd_bar(lasso.lm)
+ols_plot_resid_stand(lasso.lm)
+
+
+##################################################################################
+# Try Log(MSRP vs cubic Year & Second degree EngineHP variable selection #########
+##################################################################################
+
+# Above are findings during EDA... connections to logMSRP
+engineHP.lm = lm(log(MSRP)~EngineHP,data=train)
+ols_plot_resid_stand(engineHP.lm)
+# Looks like Second degree might help
+engineHP.lm2 = lm(log(MSRP)~EngineHP+I(EngineHP^2),data=train)
+ols_plot_resid_stand(engineHP.lm2)
+
+#Without transformation
+engineHP.lm = lm(MSRP~EngineHP,data=train)
+ols_plot_resid_stand(engineHP.lm)
+# Looks like Second degree might help, and MSRP looks better than log(MSRP)
+engineHP.lm2 = lm(MSRP~EngineHP+I(EngineHP^2),data=train)
+ols_plot_resid_stand(engineHP.lm2)
+
+# Try year
+year.lm = lm(log(MSRP)~Year,data=train)
+ols_plot_resid_stand(year.lm)
+# Try Second Degree Year
+year.lm2 = lm(log(MSRP)~Year+I(Year^2),data=train)
+ols_plot_resid_stand(year.lm2)
+# Try Third Degree Year
+year.lm3 = lm(log(MSRP)~Year+I(Year^2)+I(Year^3),data=train)
+ols_plot_resid_stand(year.lm3)
+#Try regular MSRP
+# Try year
+year.lm = lm(MSRP~Year,data=train)
+ols_plot_resid_stand(year.lm)
+# Try Second Degree Year
+year.lm2 = lm(MSRP~Year+I(Year^2),data=train)
+ols_plot_resid_stand(year.lm2)
+# Try Third Degree Year
+year.lm3 = lm(MSRP~Year+I(Year^2)+I(Year^3),data=train)
+ols_plot_resid_stand(year.lm3)
+############### Looks like LogMSRP vs year degree 3 helps
+############### Looks like LogMSRP vs EngineHP degree 2 helps
+# Reselect variables with LASSO
+#Dummy code categorical predictor variables
+x <- model.matrix(log(MSRP)~.+I(EngineHP^2)+I(Year^2)+I(Year^3),train)[,-1]
+y <- log(train$MSRP)
+set.seed(123) # Need a seed number to keep same results for LASSO
+cv.out2=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+par(mfrow=c(1,1))
+plot(cv.out2)
+coef(cv.out2, cv.out2$lambda.min)
+# Year-Degree2 didn't get turned on neither did I(Year^3), I(EngineHP^2) did get turned on
+# Following also get turned off...
+# - Hatchback - Popularity 
+# Refit the model with predictors
+lasso.lm.log = lm(log(MSRP)~.+I(EngineHP^2)-Hatchback-Popularity,data=train)
+summary(lasso.lm.log) # R-Squared and Adjusted R-squared is slightly lower compared to regular MSRP using LASSO
+# Check Assumptions
+par(mfrow=c(2,2))
+plot(lasso.lm.log)
+library(olsrr)
+ols_plot_cooksd_bar(lasso.lm.log)
+ols_plot_resid_stand(lasso.lm.log)
+#Residual looks okay... check test ASE below
 
 #####################################################
 # Compare Forward vs. Backward on Test set to LASSO #
@@ -471,6 +545,19 @@ backward.pred = predict(backward.regression,test)
 # See backward test ASE
 testMSE_Backward<-mean((test.result-backward.pred)^2)
 testMSE_Backward #44935730
+
+#LASSO test result
+lasso.pred2 = predict(lasso.lm,test)
+# See LASSO test ASE after refit
+testASE_LASSO_2 = mean((test.result-lasso.pred2)^2)
+testASE_LASSO_2 #35982124
+
+# LogMSRP with Second Degree EngineHP picked by LASSO test result
+lasso.log.pred1 = predict(lasso.lm.log,test)
+# Recover the value by exp
+lasso.log.pred1 = exp(lasso.log.pred1)
+testASE_LASSO_LOG = mean((test.result-lasso.log.pred1)^2)
+testASE_LASSO_LOG #24577120
 
 ```
 
