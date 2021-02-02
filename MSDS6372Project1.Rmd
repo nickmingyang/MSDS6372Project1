@@ -610,9 +610,19 @@ library(caret)
 trainY = train$MSRP
 #getting training predictors
 trainX = train[,-c(1,2,4,7,8,10,11,15,16,17,18,19,20,21,22,23,24,25,26)]
+#try scaling variables
+#str(trainX)
+#for(i in 1: dim(trainX)[2]){
+#  trainX[,i] = scale(trainX[,i])
+#}
+# finished scaling
 # Doing the same for test
 testY = test$MSRP
 testX = test[,-c(1,2,4,7,8,10,11,15,16,17,18,19,20,21,22,23,24,25,26)]
+#str(testX)
+#for(i in 1: dim(testX)[2]){
+#  testX[,i] = scale(testX[,i])
+#}
 
 fit = knnreg(trainX,trainY,k=3)
 plot(testY,predict(fit,testX))
