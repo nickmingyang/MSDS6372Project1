@@ -331,13 +331,13 @@ pred.test.step = predict(log.model8.step,test)
 # exp values to return to original value
 pred.test.step = exp(pred.test.step)
 test_ASE_STEP = mean((testMSRP-pred.test.step)^2)
-test_ASE_STEP #571362858
+sqrt(test_ASE_STEP) #test RMSE = 23903.2
 
 #Calculate LASSO test ASE
 pred.test.lasso = predict(log.model7,test)
 pred.test.lasso = exp(pred.test.lasso)
 test_ASE_LASSO = mean((testMSRP-pred.test.lasso)^2)
-test_ASE_LASSO #571362858
+sqrt(test_ASE_LASSO) ##test RMSE = 23903.2
 
 # By comparison, Stepwise model workflow provided the best model in terms of r-squared, adjusted r-squared and test ASE.
 # Move forward with the analysis with log.model8.step
@@ -557,9 +557,61 @@ lasso.log.pred1 = predict(lasso.lm.log,test)
 # Recover the value by exp
 lasso.log.pred1 = exp(lasso.log.pred1)
 testASE_LASSO_LOG = mean((test.result-lasso.log.pred1)^2)
-testASE_LASSO_LOG #24577120
+sqrt(testASE_LASSO_LOG) #test RMSE = 4957.532
 
 ```
+
+# Note: Rerun the code chunk for clean train/test/validate datasets
+#### Objective 2 KNN Regression
+KNN Regression is a non-parametric machine learning approach, it first identifies the K training observations that are closest to X0, it then estimates the response using the average of all the training response identified. The optimal value for K will depend on the bias-variance trade off. A small K provides the most flexible fit, which will have low bias but high variance. This variance is due to the fact that the prediction in a given region is entirely dependent on just one observation. In contrast, larger values of K provide a smoother and less variable fit; the prediction in a region is an average of several points, and so changing one observation has smaller effect. However, the smoothing may cause bias by masking some of the structure in the response. -- (ISLR Seventh Edition) Note: KNN regression can only handles numerical variables.
+
+
+```{r}
+library(caret)
+############################################################
+#testing KNN regression - only handles numeric variables####
+############################################################
+
+#getting training response
+trainY = train$MSRP
+#getting training predictors
+trainX = train[,-c(1,2,4,7,8,10,11,15,16,17,18,19,20,21,22,23,24,25,26)]
+# Doing the same for test
+testY = test$MSRP
+testX = test[,-c(1,2,4,7,8,10,11,15,16,17,18,19,20,21,22,23,24,25,26)]
+
+fit = knnreg(trainX,trainY,k=3)
+plot(testY,predict(fit,testX))
+#Try testing testASE
+knn.k3.pred = predict(fit,testX)
+testASE_KNN_k3 = mean((testY-knn.k3.pred)^2)
+sqrt(testASE_KNN_k3)
+
+############# explore optimal k using test ASE ###############
+iterations = 100
+testASE_List = c()
+for(j in 1:iterations){
+  fit = knnreg(trainX,trainY,k=j)
+  knn.pred = predict(fit,testX)
+  testASE_loop = mean((testY-knn.pred)^2)
+  testASE_List[j] = sqrt(testASE_loop)
+}
+par(mfrow=c(1,1))
+plot(1:iterations,testASE_List,type="l",xlab="# of k",ylab="test Root Mean Square Error")
+index<-which(testASE_List==min(testASE_List))
+index
+
+# seems k=2 gives the best result according to our test ASE
+fit = knnreg(trainX,trainY,k=2)
+plot(testY,predict(fit,testX))
+#Try testing testASE
+knn.k2.pred = predict(fit,testX)
+testASE_KNN_k2 = mean((testY-knn.k2.pred)^2)
+sqrt(testASE_KNN_k2)
+
+```
+
+
 
 
 
