@@ -646,6 +646,31 @@ sqrt(testASE_KNN_k2) # test RMSE = 6861.357
 ```
 
 
+# Validation test between best models under each objective
+
+```{r}
+validate.result = validate$MSRP
+validate = validate[,-15]
+# Validate best model from objective 1 result
+objective1.predict = predict(log.model8.step,validate)
+# See forward test ASE
+validateMSE_Object1 <- mean((validate.result-objective1.predict)^2)
+sqrt(validateMSE_Object1) #test RMSE = 55452.96
+
+# Validate best model from objective 2 result
+objective2.reg.predict = predict(lasso.lm.log,validate)
+validateMSE_object2.reg.predict = mean((validate.result-objective2.reg.predict)^2)
+sqrt(validateMSE_object2.reg.predict) #test RMSE = 55452.94
+
+# Validate best model from KNN
+validateKNN = validate[,-c(1,2,4,7,8,10,11,15,16,17,18,19,20,21,22,23,24,25)]
+objective2.knn.predict = predict(fit,validateKNN)
+validateASE_KNN_k2 = mean((validate.result-objective2.knn.predict)^2)
+sqrt(validateASE_KNN_k2) # test RMSE = 5718.328
+
+```
+
+
 
 
 
