@@ -527,6 +527,33 @@ ols_plot_cooksd_bar(lasso.lm.log)
 ols_plot_resid_stand(lasso.lm.log)
 #Residual looks okay... check test ASE below
 
+######################################################################################################################
+# Try Log(MSRP) Second degree EngineHP, adding interaction EngineFuelType*EngineCylinders variable selection #########
+######################################################################################################################
+
+tryplot = train%>% select(MSRP,EngineCylinders,EngineFuelType)
+tryplot$logMSRP = log(tryplot$MSRP)
+tryplot %>% ggplot(aes(x=EngineCylinders,y=logMSRP, color=EngineFuelType))+
+  geom_point(position="jitter")+ scale_color_viridis_d()
+#Try with LASSO variable selection
+x <- model.matrix(log(MSRP)~.+I(EngineHP^2)+EngineFuelType*EngineCylinders,train)[,-1]
+y <- log(train$MSRP)
+set.seed(123) # Need a seed number to keep same results for LASSO
+cv.out3=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+par(mfrow=c(1,1))
+plot(cv.out3)
+coef(cv.out3, cv.out3$lambda.min)
+# - Hatchback - Popularity
+# Refit the model with predictors
+lasso.lm.log.sq.int = lm(log(MSRP)~.+I(EngineHP^2)-Hatchback-Popularity+EngineFuelType*EngineCylinders,data=train)
+summary(lasso.lm.log.sq.int) # R-Squared and Adjusted R-squared is slightly lower compared to regular MSRP using LASSO
+# Check Assumptions
+par(mfrow=c(2,2))
+plot(lasso.lm.log.sq.int)
+library(olsrr)
+ols_plot_cooksd_bar(lasso.lm.log)
+ols_plot_resid_stand(lasso.lm.log)
+
 #####################################################
 # Compare Forward vs. Backward on Test set to LASSO #
 #####################################################
@@ -558,6 +585,13 @@ lasso.log.pred1 = predict(lasso.lm.log,test)
 lasso.log.pred1 = exp(lasso.log.pred1)
 testASE_LASSO_LOG = mean((test.result-lasso.log.pred1)^2)
 sqrt(testASE_LASSO_LOG) #test RMSE = 4957.532
+
+# LogMSRP with Second Degree EngineHP and interaction EngineCylinders*EngineFuelType
+lasso.log.sq.int.pred = predict(lasso.lm.log.sq.int,test)
+# Recover the value by exp
+lasso.log.sq.int.pred = exp(lasso.log.sq.int.pred)
+testASE_LASSO_LOG_Inter = mean((test.result-lasso.log.sq.int.pred)^2)
+sqrt(testASE_LASSO_LOG_Inter) #test RMSE = 4990.447
 
 ```
 
