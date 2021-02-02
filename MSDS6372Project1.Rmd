@@ -538,19 +538,19 @@ test = test[,-15] #delete MSRP for prediction
 forward.pred = predict(forward.regression,test)
 # See forward test ASE
 testMSE_Forward<-mean((test.result-forward.pred)^2)
-testMSE_Forward #46054176
+sqrt(testMSE_Forward) #test RMSE = 6786.323
 
 #Backward test results
 backward.pred = predict(backward.regression,test)
 # See backward test ASE
 testMSE_Backward<-mean((test.result-backward.pred)^2)
-testMSE_Backward #44935730
+sqrt(testMSE_Backward) #test RMSE = 6702.666
 
 #LASSO test result
 lasso.pred2 = predict(lasso.lm,test)
 # See LASSO test ASE after refit
 testASE_LASSO_2 = mean((test.result-lasso.pred2)^2)
-testASE_LASSO_2 #35982124
+sqrt(testASE_LASSO_2) #test RMSE = 5998.51
 
 # LogMSRP with Second Degree EngineHP picked by LASSO test result
 lasso.log.pred1 = predict(lasso.lm.log,test)
@@ -607,7 +607,7 @@ plot(testY,predict(fit,testX))
 #Try testing testASE
 knn.k2.pred = predict(fit,testX)
 testASE_KNN_k2 = mean((testY-knn.k2.pred)^2)
-sqrt(testASE_KNN_k2)
+sqrt(testASE_KNN_k2) # test RMSE = 6861.357
 
 ```
 
