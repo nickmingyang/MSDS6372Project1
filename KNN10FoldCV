@@ -1,0 +1,102 @@
+library(rgl)
+library(tree)
+library(GGally)
+library(ISLR)
+library(caret)
+library(rattle)
+
+# k-nn Model  10 fold CV to choose k
+#
+#Remember only continuous predictors
+set.seed(1234)
+fitControl<-trainControl(method="repeatedcv",number=10,repeats=10) #number is the k in k-fold
+
+knn.fit<-train(MSRP~Year+EngineHP+EngineCylinders+NumberOfDoors+HighwayMPG+CityMPG+Popularity,
+               data=train,
+               method="knn",preProcess = c("center","scale"),
+               trControl=fitControl,
+               tuneGrid=data.frame(k=c(1:10,15,20,25,30))
+)
+
+#Lets look at the CV result
+knn.fit # this gives 1
+plot(knn.fit)
+
+#Making predictions on the validation set
+knn.pred<-predict(knn.fit,validate)
+
+#Computing Errror Metrics
+knn.validate<-postResample(pred=knn.pred,obs=test$MSRP)
+knn.validate
+
+plot(knn.pred,test$MSRP)
+lines(0:2000,0:2000)
+
+#Ranking predictors
+varImp(knn.fit)
+plot(varImp(knn.fit))
+
+knn.validate
+knn.fit
+
+# w/o scaling
+set.seed(1234)
+fitControl<-trainControl(method="repeatedcv",number=10,repeats=10) #number is the k in k-fold
+
+knn.fit<-train(MSRP~Year+EngineHP+EngineCylinders+NumberOfDoors+HighwayMPG+CityMPG+Popularity,
+               data=train,
+               method="knn",
+               trControl=fitControl,
+               tuneGrid=data.frame(k=c(1:10,15,20,25,30))
+)
+
+#Lets look at the CV result
+knn.fit # this gives 1
+plot(knn.fit)
+
+#Making predictions on the validation set
+knn.pred<-predict(knn.fit,validate)
+
+#Computing Errror Metrics
+knn.validate<-postResample(pred=knn.pred,obs=test$MSRP)
+knn.validate
+
+plot(knn.pred,test$MSRP)
+lines(0:2000,0:2000)
+
+#Ranking predictors
+varImp(knn.fit)
+plot(varImp(knn.fit))
+
+knn.validate
+knn.fit
+
+# try w/o scaling and with log?  (of course RMSE won't be comparable)
+set.seed(1234)
+fitControl<-trainControl(method="repeatedcv",number=10,repeats=10) #number is the k in k-fold
+
+knn.fit<-train(log(MSRP)~Year+EngineHP+EngineCylinders+NumberOfDoors+HighwayMPG+CityMPG+Popularity,
+               data=train,
+               method="knn",
+               trControl=fitControl,
+               tuneGrid=data.frame(k=c(1:10,15,20,25,30))
+)
+
+#Lets look at the CV result
+knn.fit # this gives 1
+plot(knn.fit)
+
+#Making predictions on the validation set
+knn.pred<-predict(knn.fit,validate)
+
+#Computing Errror Metrics
+knn.validate<-postResample(pred=knn.pred,obs=log(test$MSRP))
+knn.validate
+
+plot(knn.pred,log(test$MSRP))
+lines(0:2000,0:2000)
+
+#Ranking predictors
+varImp(knn.fit)
+plot(varImp(knn.fit))
+
